@@ -8,4 +8,5 @@ class Movie extends Eloquent
 {
 	//protected $connection = 'mongodb';
     protected $collection = 'movies';
+
 }

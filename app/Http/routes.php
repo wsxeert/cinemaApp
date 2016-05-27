@@ -16,18 +16,24 @@ Route::get('/', function () {
 });
 
 
-//Planning stuff
+//Page to try some API for schedule planner
 Route::get('planner', function(){
 	return view('planning');
 });
 
-//Schedule
-Route::get('allschedule',"ScheduleController@all");
-Route::post('schedule', "ScheduleController@newSchedule");
-
 //Movie
 Route::post('movie',"MovieController@create");
-Route::get('allmovie', "MovieController@all");
+Route::get('movieall', "MovieController@all");
+Route::get('movie/{name}', "MovieController@get");
 Route::put('movie', "MovieController@update");
 Route::delete('movie', "MovieController@deleteMovieByName");
+
+//Schedule
+Route::get('schedule',"ScheduleController@all");
+Route::get('schedule/{name}', "ScheduleController@getScheduleByMovieName");
+Route::post('schedule', "ScheduleController@newSchedule");
+Route::delete('schedule', "ScheduleController@delete");
+Route::put('schedule', "ScheduleController@update");
+
+
 
