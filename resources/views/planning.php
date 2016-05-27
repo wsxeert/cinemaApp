@@ -8,7 +8,7 @@
 
 		<h2>Manage Movies</h2>
 		<p>
-			<form method="GET" action="movieall">
+			<form method="GET" action="movie">
 				<b>Show all movies!</b>
 				<button type='submit'>Go</button>
 			</form>
@@ -86,7 +86,6 @@
 				<button type="submit">Delete Schedule</button>
 			</form>
 		</p>
-
 	</body>
 
 </html>

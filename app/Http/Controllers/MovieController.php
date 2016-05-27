@@ -56,7 +56,6 @@ class MovieController extends Controller
       	// echo 'New movie has been added successfully <br />';
 		// echo $name . '<br />';
 		// echo $duration;
-    	}
     }
 
     public function update(Request $request)

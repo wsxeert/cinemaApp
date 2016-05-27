@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Schedule;
 use App\Movie;
+use App\Theater;
 use Illuminate\Http\Request;
 
 class ScheduleController extends Controller
@@ -35,19 +36,28 @@ class ScheduleController extends Controller
 
 	public function newSchedule(Request $request)
 	{
-		//*****Need to add a checking if the inputs are valid!*****
 		$movieName = $request->input('name');
+		$time = $request->input('time');
+		$theaterNum = $request->input('theater');
+		$scheduleFound = Schedule::where('name',$movieName)->where('time',$time)->where('theater.num',intval($theaterNum))->first();
+		//if this new schedule is a duplicated one, then dont create more.
+		if($scheduleFound)
+		{
+			return view('error', ['text' => "Duplcate schedule"]);
+		}
+		
+		//allow only existing movies in the database to be added
 		$movie = Movie::where('name', $movieName)->first();
 		if($movie)
 		{
-			$time = $request->input('time');
-			$theater = $request->input('theater');
-			if( ($time != '') && ($theater != '') )
+			
+			$theater = Theater::where('num',intval($theaterNum))->first();
+			if( ($time != '') && ($theater) )
 			{
 				$newSchedule = new Schedule;
 				$newSchedule->name = $movieName;
 				$newSchedule->time = $time;
-				$newSchedule->theater = $theater;
+				$newSchedule->theater = ['num'=>intval($theaterNum), 'availableSeats' => $theater->seats];
 				$newSchedule->save();
 				return $newSchedule;
 			}
@@ -71,17 +81,22 @@ class ScheduleController extends Controller
 	{
 		$name = $request->input('name');
 		$time = $request->input('time');
-		$theater = $request->input('theater');
-		if ($name == '')
+		$theaterNum = $request->input('theater');
+		if (($name == '') || ($time == '') || ($theaterNum || ''))
 		{
-			return view('error', ['text' => "Please input movie name!!"]);
+			return view('error', ['text' => "Please input all information!!"]);
 		}
 		else
 		{
-			$schedule = Schedule::where('name', $name)->where('time',$time)->where('theater',$theater)->first();
+			//only allow to delete when all fields received.
+			$schedule = Schedule::where('name', $name)->where('time',$time)->where('theater.num',intval($theaterNum))->first();
 			if($schedule)
 			{
-				$schedule->delete();	
+				$schedule->delete();
+			}
+			else
+			{
+				return view('error', ['text' => "Schedule NOT found"]);
 			}
 			
 			return $schedule;
@@ -90,12 +105,13 @@ class ScheduleController extends Controller
 
 	public function update(Request $request)
 	{
-		$schedule = Schedule::where('name',$request->input('name'))->where('time',$request->input('time'))->where('theater',$request->input('theater'))->first();
+		$schedule = Schedule::where('name',$request->input('name'))->where('time',$request->input('time'))->where('theater.num',intval($request->input('theater')))->first();
 		if($schedule)
 		{
 			$newName = $request->input('newName');
 			$newTime = $request->input('newTime');
-			$newTheater = $request->input('newTheater');
+			$newTheaterNum = $request->input('newTheater');
+
 			if($newName != '')
 			{	
 				$schedule->name = $newName;
@@ -104,9 +120,18 @@ class ScheduleController extends Controller
 			{	
 				$schedule->time = $newTime;
 			}
-			if($newTheater != '')
+			if($newTheaterNum != '')
 			{	
-				$schedule->theater = $newTheater;
+				$theater = Theater::where('num',intval($newTheaterNum))->first();
+				if($theater)
+				{
+					$schedule->theater = ['num'=> intval($newTheaterNum), 'availableSeats'=> $theater->seats];
+				}
+				else
+				{
+					return view('error', ['text' => "Theater NOT found"]);
+				}
+				
 			}
 			$schedule->save();
 		}
@@ -115,6 +140,25 @@ class ScheduleController extends Controller
 			return view('error', ['text' => "Schedule NOT found"]);
 		}
 		
+	}
+
+	public function getAvailableSeats($name, $time)
+	{
+		$schedules = Schedule::where('name',$name)->where('time',$time)->get()->sortBy('theater.num');
+		$arr = array();
+		foreach ($schedules as $schedule)
+		{
+			$arr[] = $schedule->theater;
+		}
+		return $arr;
+	}
+
+	public function buyTicket(Request $request)
+	{
+		$name = $request->input('name');
+		$time = $request->input('time');
+		$seat = $request->input('seat');
+		return "Buy a ticket";
 	}
 }
 
