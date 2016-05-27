@@ -14,3 +14,20 @@
 Route::get('/', function () {
     return view('welcome');
 });
+
+
+//Planning stuff
+Route::get('planner', function(){
+	return view('planning');
+});
+
+//Schedule
+Route::get('allschedule',"ScheduleController@all");
+Route::post('schedule', "ScheduleController@newSchedule");
+
+//Movie
+Route::post('movie',"MovieController@create");
+Route::get('allmovie', "MovieController@all");
+Route::put('movie', "MovieController@update");
+Route::delete('movie', "MovieController@deleteMovieByName");
+

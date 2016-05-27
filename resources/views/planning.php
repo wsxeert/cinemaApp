@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>How is the cinema doing?</title>
+	</head>
+
+	<body>
+
+		<h2>Manage Movies</h2>
+		<p>
+			<form method="GET" action="allmovie">
+				Show all movies!
+				<button type='submit'>Go</button>
+			</form>
+		</p>
+		<p>
+			<form method="POST" action="movie">
+				Add new movie<br>
+				<?php echo csrf_field(); ?>
+				Movie name: <input name="name" value=""><br>
+				Duration: <input name="duration" value=""><br>
+				<button type="submit">Add Movie</button>
+			</form>
+		</p>
+
+		<p>
+			<form method="POST" action="movie">
+				Update existing movie<br>
+				<?php echo csrf_field(); ?>
+				<input type="hidden" value="PUT" name="_method">
+				Movie name: <input name="name" value=""><br>
+				New movie name: <input name="newName" value=""><br>
+				New duration:  <input name="newDuration" value=""><br>
+				<button type="submit">Update Movie</button>
+			</form>
+		</p>
+
+		<p>
+			<form method="POST" action="movie">
+				Delet existing movie<br>
+				<?php echo csrf_field(); ?>
+				<input type="hidden" value="DELETE" name="_method">
+				Movie name: <input name="name" value=""><br>
+				<button type="submit">Delete Movie</button>
+			</form>
+		</p>
+
+		<h2>Manage Schedules</h2>
+		<p>
+			<form method="GET" action="allschedule">
+				Check for schedule!
+				<button type="submit">Go</button>
+			</form>
+		</p>
+		<p>
+			<form method="POST" action="schedule">
+				Add a new schedule<br>
+				<?php echo csrf_field(); ?>
+				Movie name: <input name="name" value=""><br>
+				Show time: <input name="time" value=""><br>
+				Theater: <input name="theater" value=""><br>
+				<button type="submit">Add Schedule</button>
+			</form>
+		</p>
+
+
+
+	</body>
+
+</html>
