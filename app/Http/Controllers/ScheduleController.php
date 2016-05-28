@@ -7,9 +7,7 @@ use App\Movie;
 use App\Theater;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-
-
-
+use DB;
 
 class ScheduleController extends Controller
 {
@@ -177,16 +175,25 @@ class ScheduleController extends Controller
 		$schedule = Schedule::where('name',$name)->where('time',$time)->where('theater.num', $theaterNum)->first();
 		if($schedule)
 		{
+			//check if this particular theater has that row of seat.
 			if(isset($schedule->theater['availableSeats'][$seatRow]))
-			{	
+			{
 				$theater = $schedule->theater;
 				$index = array_search($seatNum, $theater['availableSeats'][$seatRow]);
 				if($index !== false)
 				{	
-					//generate reservation list to the theater
+					//generate reservation list, and booking information.
 					if($action == 'book')
 					{
+						//add the seat to the reserved list.
 						$theater["reservedSeats"][$seatRow][] = $seatNum;
+
+						//booking id generate and store some info.
+						$bookingDoc = new Schedule;
+						$bookingDoc->scheduleid = $schedule->_id;
+						$bookingDoc->seats = array($seatRow => $seatNum);
+						$bookingDoc->bookid = bin2hex(random_bytes(6));
+						$bookingDoc->save();
 					}
 					unset($theater['availableSeats'][$seatRow][$index]);
 					$schedule->theater = $theater;
@@ -229,6 +236,10 @@ class ScheduleController extends Controller
 				$theater["availableSeats"] = array_merge_recursive($theater["availableSeats"], $reservedSeats);
 				
 				unset($theater["reservedSeats"]);
+
+				//remove all booking document for this schedule/theater
+				DB::collection('schedules')->where('scheduleid', $schedule->_id)->delete();
+
 				$schedule->theater = $theater;
 				$schedule->save();
 				return $theater;
