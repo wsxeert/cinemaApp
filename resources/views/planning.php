@@ -14,6 +14,13 @@
 			</form>
 		</p>
 		<p>
+			<form method="GET" action="movie">
+				<b>Find movie info!</b><br>
+				Movie name: <input name="name" value=""<br>
+				<button type='submit'>Go</button>
+			</form>
+		</p>
+		<p>
 			<form method="POST" action="movie">
 				<b>Add new movie</b><br>
 				<?php echo csrf_field(); ?>

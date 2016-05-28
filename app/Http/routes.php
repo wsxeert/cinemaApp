@@ -36,23 +36,29 @@ Route::get('cashier', function(){
 });
 
 //Movie
+//Route::get('movie', "MovieController@all");
 Route::post('movie',"MovieController@create");
-Route::get('movie', "MovieController@all");
-Route::get('movie/{name}', "MovieController@get");
+Route::get('movie', "MovieController@get");
 Route::put('movie', "MovieController@update");
 Route::delete('movie', "MovieController@deleteMovieByName");
 
 //Schedule
 Route::get('schedule',"ScheduleController@all");
 Route::get('schedule/{name}', "ScheduleController@getScheduleByMovieName");
-Route::get('schedule/{name}/{time}', "ScheduleController@getAvailableSeats");
+Route::get('schedule/{name}/{time}/{theaterNum}', "ScheduleController@getAvailableSeats");
 Route::post('schedule', "ScheduleController@newSchedule");
 Route::delete('schedule', "ScheduleController@delete");
 Route::put('schedule', "ScheduleController@update");
 
-//Theater
+//////////////////Theater
 Route::get('theater', "TheaterController@all");
 Route::get('theater/{theaterNum}', "TheaterController@get");
 
-//Ticket
-Route::post('buyticket', "ScheduleController@buyTicket"); //I use POST on this as it normally post a new transaction.
+//////////////////Ticket managing (Book or buying a ticket)
+
+//
+Route::post('reservation', "ScheduleController@reservation"); //I use POST on this as it normally post a new transaction.
+Route::delete('reservation', "ScheduleController@purgeReservedSeats");
+
+
+

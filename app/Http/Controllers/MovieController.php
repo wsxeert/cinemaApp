@@ -8,28 +8,45 @@ use App\Movie;
 
 class MovieController extends Controller
 {
-	public function all()
-	{
+	// public function all()
+	// {
     	
-    	$movies = Movie::all();
+ //    	$movies = Movie::all();
 
-    	//pretty
-    	// foreach ($movies as $movie)
-    	// {
-    	// 	echo $movie . '<br>';
-    	// }
+ //    	//pretty
+ //    	// foreach ($movies as $movie)
+ //    	// {
+ //    	// 	echo $movie . '<br>';
+ //    	// }
 
+ //    	return $movies;
+ //    }
+
+
+    //if name is supplied, get the movie information for the specified movie if found one.
+    //otherwise return every movies we have.
+    //return type will always be an array even we didnt find any
+    public function get()
+    {
+    	$name = '';
+
+    	if(isset($_GET['name']))
+    	{
+    		$name = $_GET['name'];
+    	}
+    	
+    	if($name == '')
+    	{
+    		$movies = Movie::all();
+    	}
+    	else
+    	{
+    		$movies = Movie::where('name', $name)->get();
+    	}
     	return $movies;
     }
 
-    public function get($name)
-    {
-    	echo $name;
-    	$movie = Movie::where('name', $name)->first();
-    	return $movie;
-    }
-
-
+    //create new movie with information of 'name' and 'duration'
     public function create(Request $request)
     {
     	$name = $request->input('name');
@@ -38,12 +55,12 @@ class MovieController extends Controller
     		$movie = Movie::where('name', $name)->first();
     		if($movie)
 	    	{
-	    		return view('error', ['text' => "There's already a movie with this name!!"]);
+	    		return response(view('error', ['text' => "There's already a movie with this name!!"]), 404);
 	    	}
     	}
     	else
     	{
-    		return view('error', ['text' => "Please give movie name"]);
+    		return response(view('error', ['text' => "Please give movie name"]), 404);
     	}
    	
 	   	$duration = $request->input('duration');
@@ -52,35 +69,41 @@ class MovieController extends Controller
     	$newMovie->duration = $duration;
     	$newMovie->save();
 
-    	return $newMovie;
+    	return response($newMovie, 201);
       	// echo 'New movie has been added successfully <br />';
 		// echo $name . '<br />';
 		// echo $duration;
     }
 
+    //update information to the specified movie document.
+    //movie name is required, other field can left blank if not change.
     public function update(Request $request)
     {
     	$name = $request->input('name');
+    	$newName = $request->input('newName');
+    	$newDuration = $request->input('newDuration');
     	$movie = Movie::where('name', $name)->first();
     	if($movie)
     	{
-    		$newName = $request->input('newName');
-    		if ($newName != ''){
-    			$movie->name = $newName;
-    			//echo '<br>new name set';
-    		}
-    		$newDuration = $request->input('newDuration');
-    		if ($newDuration != ''){
-    			$movie->duration = $newDuration;
-    			//echo '<br>new duration set';
-    		}
-    		$movie->save();
-    		//echo 'Saved.';
-    		//return $movie;
+    		if ($newName != '' && $newDuration != '')
+    		{
+    			if ($newName != '')
+    			{
+	    			$movie->name = $newName;
+	    			//echo '<br>new name set';
+    			}
+	    		if ($newDuration != '')
+	    		{
+	    			$movie->duration = $newDuration;
+	    			//echo '<br>new duration set';
+	    		}
+    			$movie->save();
+			}
+    		return response($movie);
        	}
     	else
     	{
-			return view('error', ['text' => "Can't find the movie"]);   		
+			return response(view('error', ['text' => "Can't find the movie"]), 404);
     	}
     }
 
@@ -95,7 +118,7 @@ class MovieController extends Controller
        	}
     	else
     	{
-			return view('error', ['text' => 'Movie NOT found?']);
+			return response(view('error', ['text' => 'Movie NOT found?']), 404);
     	}
     }
 
