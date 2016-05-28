@@ -217,6 +217,10 @@ class ScheduleController extends Controller
 			return response(view('error', ['text' => "Schedule NOT found"]), 404);
 		}
 
+		if($action == 'book')
+		{
+			return response($bookingDoc->bookid, 201);
+		}
 		return response($seatRow.$seatNum, 201);
 	}
 
@@ -252,6 +256,23 @@ class ScheduleController extends Controller
 		else
 		{
 			response(view('error', ['text' => "Schedule NOT found"]), 404);
+		}
+	}
+
+	public function findSeatFromBookingId($bookingId)
+	{
+		$reservedInfo = Schedule::where('bookid',$bookingId)->first();
+		if($reservedInfo)
+		{
+			$seatRow = array_keys($reservedInfo->seats)[0];
+			$seatNum = $reservedInfo->seats[$seatRow];
+			$schedule = Schedule::find($reservedInfo->scheduleid);
+			$movieName = $schedule->name;
+			return response()->json(['bookingID'=>$bookingId, 'name'=>$movieName, 'theater'=>$schedule->theater['num'],'seat'=>$seatRow.$seatNum]);
+		}
+		else
+		{
+			return response(view('error', ['text' => "Invalid Booking ID"]), 404);
 		}
 	}
 }
