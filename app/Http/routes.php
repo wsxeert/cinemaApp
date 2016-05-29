@@ -42,27 +42,21 @@ Route::get('movie', "MovieController@get");
 Route::put('movie', "MovieController@update");
 Route::delete('movie', "MovieController@deleteMovieByName");
 
+//////////////////Theater
+Route::get('theater', "TheaterController@all");
+Route::get('theater/{theaterNum}', "TheaterController@get");
+
 //Schedule
 Route::get('schedule',"ScheduleController@all");
 Route::get('schedule/{name}', "ScheduleController@getScheduleByMovieName");
 Route::get('schedule/{name}/{time}/{theaterNum}', "ScheduleController@getAvailableSeats");
 Route::post('schedule', "ScheduleController@newSchedule");
-Route::delete('schedule', "ScheduleController@delete");
+Route::delete('schedule', "ScheduleController@deleteSchedule");
 Route::put('schedule', "ScheduleController@update");
 
-//////////////////Theater
-Route::get('theater', "TheaterController@all");
-Route::get('theater/{theaterNum}', "TheaterController@get");
-
 //////////////////Ticket managing (Book or buying a ticket)
-
-//
 Route::post('reservation', "ScheduleController@reservation"); //I use POST on this as it normally post a new transaction.
 //Route::post('reservation/{bookingId}', "ScheduleController@reservation");
-Route::post('reservation2', "ScheduleController@reservation2");
 Route::get('reservation/{bookingId}', "ScheduleController@findSeatFromBookingId");
 Route::delete('reservation', "ScheduleController@purgeReservedSeats");
-
-
-
 
