@@ -6,19 +6,18 @@
 <body>
 	<h2>Buying Ticket</h2>
 	<p>
-		<form method="POST" action="reservation">
-			<b>Buy a Ticket</b><br>
+		<form method="POST" action="reservation2">
+			<b>Buy seats</b><br>
 			<?php echo csrf_field(); ?>
+			BookingId: <input name="bookingid" value=""><br>
 			Movie name: <input name="name" value=""><br>
 			Time: <input name="time" value=""><br>
 			Theater: <input name="theaterNum" value=""><br>
-			Seat row/num: <input size="3" name="seatRow" value=""><input size="3" name="seatNum" value=""><br> 
+			Seat row/num: <input name="seats" value=""> Note: if more than 1 seat, separate by using comma (,) <br> 
 			Activity:
-			<select name="action">
-				<option value="book">Book tickets</option>
-				<option value="buy">Buy tickets</option>
-			</select>
-			<br><button type="submit">Seat Reserve</button>
+			<button name="action" value="buy" type="submit">Buy Seats</button>
+			<button name="action" value="book" type="submit">Book Seats</button>
+			<br>
 		</form>
 	</p>
 	<p>
@@ -32,5 +31,8 @@
 			<button type="submit">Go</button>
 		</form>
 	</p>
+
+	
+
 </body>
 </html>

@@ -181,7 +181,7 @@ class ScheduleController extends Controller
 				$theater = $schedule->theater;
 				$index = array_search($seatNum, $theater['availableSeats'][$seatRow]);
 				if($index !== false)
-				{	
+				{
 					//generate reservation list, and booking information.
 					if($action == 'book')
 					{
@@ -224,6 +224,204 @@ class ScheduleController extends Controller
 		return response($seatRow.$seatNum, 201);
 	}
 
+	public function buySeatsByBookingId($bookingId)
+	{
+		$bookingDoc = Schedule::where('bookid',$bookingId)->first();
+
+		if($bookingDoc)
+		{
+			$seatsArray = $bookingDoc->seats;
+			if (count($seatsArray) == 0)
+			{
+				//empty booking????
+				return response(view('error', ['text' => "something's wrong with booking system 1"]), 500);
+			}
+
+			$schedule = Schedule::find($bookingDoc->scheduleid);
+			if (!$schedule)
+			{
+				//Booking ID is there.... but schedule has gone?
+				return response(view('error', ['text' => "something's wrong with booking system 2"]), 500);
+			}
+
+			$theater = $schedule->theater;
+			$seatRows = array_keys($seatsArray);
+			$successList = array();
+
+			print_r($theater);
+			print_r($seatsArray);
+
+			foreach ($seatRows as $seatRow)
+			{
+				//check if this reserve list has that row of seat recorded.
+				if(isset($theater['reservedSeats'][$seatRow]))
+				{
+					$seatNums = $seatsArray[$seatRow];
+					foreach($seatNums as $seatNum)
+					{
+						$index = array_search($seatNum, $theater['reservedSeats'][$seatRow]);
+						if($index !== false)
+						{
+							print_r('index:'. $index . ' seat:' . $seatRow . $seatNum . '<br>');
+							unset($theater['reservedSeats'][$seatRow][$index]);
+							$successList[$seatRow][] = $seatNum;
+						}
+					}
+
+					if(count($theater['reservedSeats'][$seatRow]) == 0)
+					{
+						//clear it just for cleaness
+						unset($theater['reservedSeats'][$seatRow]);
+					}
+				}
+			}
+			if(count($theater['reservedSeats']) == 0)
+			{
+				//clear it just for cleaness
+				unset($theater['reservedSeats']);
+			}
+		}
+		else
+		{
+			return response(view('error', ['text' => "Booking ID NOT found"]), 404);
+		}
+		
+		print_r($theater);
+
+		return $successList;
+	}
+
+	
+	//make the input string, separate them to be array of ["row"=>"seat"]
+	public function makeArrayOfSeatsFromText($seats)
+	{
+		$seatsInText = strtolower($seats);
+		$seatsTextInArray = explode(',', $seatsInText);
+		$seatsArray = array();
+		foreach ($seatsTextInArray as $seatText)
+		{
+			//only use the text that has valid seat pattern. i.e. A1 A2 A99 Z1 Z99
+			if(preg_match("/^[a-zA-Z]+\d\d?$/", $seatText) != 0)
+			{
+				$seatsArray[$seatText[0]][] = intval(substr($seatText,1,2));
+			}
+		}
+		return $seatsArray;
+	}
+
+
+	public function reserveSeats(Request $request, $action='buying')
+	{
+		$name = $request->input('name');
+		$time = $request->input('time');
+		$theaterNum = intval($request->input('theaterNum'));
+		
+		//0. find if schedule is there, if not just return
+		$schedule = Schedule::where('name',$name)->where('time',$time)->where('theater.num', $theaterNum)->first();
+		if(!$schedule)
+			return response(view('error', ['text' => "Schedule NOT found"]), 404);
+
+		//1. get Seats input, make it to array of seats.
+		$seatsArray = ScheduleController::makeArrayOfSeatsFromText($request->input('seats'));
+
+		if(count($seatsArray) != 0)
+		{
+			$successList = ScheduleController::occupySeats($schedule, $seatsArray, $action);
+		}
+		else
+		{
+			return response(view('error', ['text' => "Invalid Seat to buy"]), 404);
+		}
+
+		return $successList;
+
+	}
+
+	//Try multiple seats per booking transaction
+	public function occupySeats($schedule, $seatsArray, $action)
+	{	
+		$seatrows = array_keys($seatsArray);
+		//print_r($seatsArray);
+
+		$theater = $schedule->theater;
+		$successList = array();
+		
+		if($action == 'booking')
+		{
+			$bookingDoc = new Schedule;
+			$bookingDoc->scheduleid = $schedule->_id;
+		}
+
+		//loop through all seats
+		foreach ($seatrows as $seatRow)
+		{
+			//Theaters are different, some big, some small, check if there's the specify row.
+			if(isset($theater['availableSeats'][$seatRow]))
+			{
+				$seatRowNums = $seatsArray[$seatRow];
+				foreach ($seatRowNums as $seatNum)
+				{
+					//find the seatnum if it's available. (if it has been bought it should have already been removed some time ago)
+					$index = array_search($seatNum, $theater['availableSeats'][$seatRow]);
+					if($index !== false)
+					{
+						//remove each seat from the available list
+						unset($theater['availableSeats'][$seatRow][$index]);
+						$theater["reservedSeats"][$seatRow][] = $seatNum;
+						$successList[$seatRow][] = $seatNum;
+					}
+				}
+			}
+		}
+		if (count($successList) != 0)
+		{
+			if($action == 'booking')
+			{
+				$bookingDoc->seats = $successList;
+				//carry out the bookingID
+				$action = bin2hex(random_bytes(6));
+				$bookingDoc->bookid = $action;
+				$bookingDoc->save();
+			}
+		
+			//push to database
+			$schedule->theater = $theater;
+			$schedule->save();
+
+			// print_r($successList);
+			// print_r($bookingDoc);
+			// print_r($theater);
+			return [$successList, $action];
+		}
+		else
+		{
+			return response(view('error', ['text' => "Seats are not available"]), 404);
+		}
+	}
+
+	public function reservation2(Request $request)
+	{
+		$action = strtolower($request->input('action'));
+		
+		if($action == 'buy')
+		{
+			$bookingId = $request->input('bookingid');
+			if($bookingId != '')
+			{
+				return ScheduleController::buySeatsByBookingId($bookingId);
+			}
+			else
+			{
+				return ScheduleController::reserveSeats($request);
+			}
+		}
+		elseif ($action == 'book')
+		{
+			return ScheduleController::reserveSeats($request, 'booking');
+		}
+	}
+
+
 	public function purgeReservedSeats(Request $request)
 	{
 		$name = $request->input('name');
@@ -233,6 +431,12 @@ class ScheduleController extends Controller
 		if($schedule)
 		{
 			$theater = $schedule->theater;
+
+			//remove all booking document for this schedule/theater
+			//put it here just in case that the reservedSeats mismatch with booking document. (no reserved seats in theater's document for some reason)
+			//just delete them all
+			DB::collection('schedules')->where('scheduleid', $schedule->_id)->delete();
+
 			if(isset($theater["reservedSeats"]))
 			{
 				$reservedSeats = $theater["reservedSeats"];
@@ -241,12 +445,8 @@ class ScheduleController extends Controller
 				
 				unset($theater["reservedSeats"]);
 
-				//remove all booking document for this schedule/theater
-				DB::collection('schedules')->where('scheduleid', $schedule->_id)->delete();
-
 				$schedule->theater = $theater;
 				$schedule->save();
-				return $theater;
 			}
 			else
 			{
@@ -257,6 +457,8 @@ class ScheduleController extends Controller
 		{
 			response(view('error', ['text' => "Schedule NOT found"]), 404);
 		}
+
+		return $theater;
 	}
 
 	public function findSeatFromBookingId($bookingId)

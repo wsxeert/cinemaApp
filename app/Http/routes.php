@@ -58,6 +58,8 @@ Route::get('theater/{theaterNum}', "TheaterController@get");
 
 //
 Route::post('reservation', "ScheduleController@reservation"); //I use POST on this as it normally post a new transaction.
+//Route::post('reservation/{bookingId}', "ScheduleController@reservation");
+Route::post('reservation2', "ScheduleController@reservation2");
 Route::get('reservation/{bookingId}', "ScheduleController@findSeatFromBookingId");
 Route::delete('reservation', "ScheduleController@purgeReservedSeats");
 
