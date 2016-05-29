@@ -87,6 +87,7 @@
 				<b>Delete existing schedule</b><br>
 				<?php echo csrf_field(); ?>
 				<input type="hidden" value="DELETE" name="_method">
+				ID: <input name="_id" value=""><br>
 				Movie name: <input name="name" value=""><br>
 				Show time: <input name="time" value=""><br>
 				Theater: <input name="theater" value=""><br>

@@ -26,12 +26,12 @@ Route::get('test', function(){
 });
 
 //Page to try some API for schedule planner
-Route::get('planner', function(){
+Route::get('plannerTest', function(){
 	return view('planning');
 });
 
 //Page to try some API for Ticket book/buy
-Route::get('cashier', function(){
+Route::get('cashierTest', function(){
 	return view('ticketing');
 });
 
@@ -56,7 +56,6 @@ Route::put('schedule', "ScheduleController@update");
 
 //////////////////Ticket managing (Book or buying a ticket)
 Route::post('reservation', "ScheduleController@reservation"); //I use POST on this as it normally post a new transaction.
-//Route::post('reservation/{bookingId}', "ScheduleController@reservation");
 Route::get('reservation/{bookingId}', "ScheduleController@findSeatFromBookingId");
 Route::delete('reservation', "ScheduleController@purgeReservedSeats");
 

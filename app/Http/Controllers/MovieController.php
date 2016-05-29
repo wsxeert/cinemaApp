@@ -5,24 +5,10 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Http\Requests;
 use App\Movie;
+use DB;
 
 class MovieController extends Controller
 {
-	// public function all()
-	// {
-    	
- //    	$movies = Movie::all();
-
- //    	//pretty
- //    	// foreach ($movies as $movie)
- //    	// {
- //    	// 	echo $movie . '<br>';
- //    	// }
-
- //    	return $movies;
- //    }
-
-
     //if name is supplied, get the movie information for the specified movie if found one.
     //otherwise return every movies we have.
     //return type will always be an array even we didnt find any
@@ -42,8 +28,21 @@ class MovieController extends Controller
     	else
     	{
     		$movies = Movie::where('name', $name)->get();
-    	}
-    	return $movies;
+       	}
+
+       	if(count($movies) != 0)
+       	{
+	     	foreach($movies as $movie)
+			{
+				$returnList[] = ['name' => $movie->name, 'duration' => $movie->duration];
+			}	
+       	}
+       	else
+       	{
+       		return response()->json(['status' => 404, 'message' => 'No movie found'], 404);
+       	}
+    	
+    	return response()->json($returnList);
     }
 
     //create new movie with information of 'name' and 'duration'
@@ -55,12 +54,12 @@ class MovieController extends Controller
     		$movie = Movie::where('name', $name)->first();
     		if($movie)
 	    	{
-	    		return response(view('error', ['text' => "There's already a movie with this name!!"]), 404);
+	    		return response()->json(['status' => 404, 'message' => 'There is already a movie with this name'], 404);
 	    	}
     	}
     	else
     	{
-    		return response(view('error', ['text' => "Please give movie name"]), 404);
+    		return response()->json(['status' => 404, 'message' => 'Please specify movie name'], 404);
     	}
    	
 	   	$duration = $request->input('duration');
@@ -69,7 +68,7 @@ class MovieController extends Controller
     	$newMovie->duration = $duration;
     	$newMovie->save();
 
-    	return response($newMovie, 201);
+    	return response()->json(['name'=> $name, 'duration'=> $duration], 201);
       	// echo 'New movie has been added successfully <br />';
 		// echo $name . '<br />';
 		// echo $duration;
@@ -82,28 +81,34 @@ class MovieController extends Controller
     	$name = $request->input('name');
     	$newName = $request->input('newName');
     	$newDuration = $request->input('newDuration');
+    	if(Movie::where('name', $newName)->first())
+    	{
+    		return response()->json(['status' => 404, 'message' => 'There is already a movie with this name'], 404);
+    	}
+
     	$movie = Movie::where('name', $name)->first();
     	if($movie)
     	{
-    		if ($newName != '' && $newDuration != '')
+    		if ($newName != '' || $newDuration != '')
     		{
     			if ($newName != '')
     			{
 	    			$movie->name = $newName;
-	    			//echo '<br>new name set';
+	    			//update all the name for any schdule with this movie.
+	    			DB::collection('schedules')->where('name', $name)->update(['name' => $newName]);
     			}
 	    		if ($newDuration != '')
 	    		{
 	    			$movie->duration = $newDuration;
-	    			//echo '<br>new duration set';
 	    		}
+
     			$movie->save();
 			}
-    		return response($movie);
+    		return response()->json(['name' => $movie->name, 'duration' => $movie->duration]);
        	}
     	else
     	{
-			return response(view('error', ['text' => "Can't find the movie"]), 404);
+			return response()->json(['status' => 404, 'message' => 'Movie not found'], 404);
     	}
     }
 
@@ -114,11 +119,11 @@ class MovieController extends Controller
     	if($movie)
     	{
     		$movie->delete();
-    		//return $movie;
+    		return 0;
        	}
     	else
     	{
-			return response(view('error', ['text' => 'Movie NOT found?']), 404);
+			return response()->json(['status' => 404, 'message' => 'Movie not found'], 404);
     	}
     }
 

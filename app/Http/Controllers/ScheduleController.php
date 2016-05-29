@@ -15,15 +15,25 @@ class ScheduleController extends Controller
     public function all()
     {
     	
-    	$schedules = Schedule::all();
-    	return $schedules;
+    	$schedules = Schedule::where('bookid', 'exists', false)->get();
+    	foreach($schedules as $schedule)
+    	{
+    		$theater = $schedule->theater;
+    		$returnList[] = ['name' => $schedule->name, 'time' => $schedule->time, 'theater' => $theater['num']];
+    	}
+
+    	return $returnList;
     }
 
 
     public function getScheduleByMovieName($name)
     {
     	$schedules = Schedule::where('name', $name)->get();
-    	return $schedules;
+    	foreach($schedules as $schedule)
+    	{
+    		$returnList[] = ['name'=> $schedule->name, 'time' => $schedule->time, 'theater' => $schedule->theater['num']];
+    	}
+    	return $returnList;
     }
 
     //return the newly created schedule if successful.
@@ -37,7 +47,7 @@ class ScheduleController extends Controller
 		//if this new schedule is a duplicated one, then dont create more.
 		if($scheduleFound)
 		{
-			return view('error', ['text' => "Duplcate schedule"]);
+			return response()->json(['status' => 404, 'message' => 'Duplcate schedule'], 404);
 		}
 		
 		//allow only existing movies in the database to be added
@@ -46,7 +56,10 @@ class ScheduleController extends Controller
 		{
 			
 			$theater = Theater::where('num',intval($theaterNum))->first();
-			if( ($time != '') && ($theater) )
+			if(!$theater)
+				return response()->json(['status' => 404,'message' => 'Invalid theater'], 404);
+
+			if( $time != '' )
 			{
 				$newSchedule = new Schedule;
 				$newSchedule->name = $movieName;
@@ -56,14 +69,14 @@ class ScheduleController extends Controller
 			}
 			else
 			{
-				return view('error', ['text' => "Please input all information"]);
+				return response()->json(['status' => 404,'message' => 'Please input all information'], 404);
 			}
 		}
 		else
 		{
-			return view('error', ['text' => "Movie NOT found!"]);
+			return response()->json(['status' => 404, 'message' => 'Movie NOT found!'], 404);
 		}
-		return $newSchedule;
+		return response()->json(['name'=>$newSchedule->name, 'time' => $newSchedule->time, 'theater' => $newSchedule->theater['num']]);
 	}    
 
 	//return 0 on succeed.
@@ -88,7 +101,7 @@ class ScheduleController extends Controller
 		}
 		else
 		{
-			return response(view('error', ['text' => "Schedule NOT found"]),404);
+			return response()->json(['status' => 404, 'message' => 'Schedule NOT found'], 404);
 		}
 
 	}
@@ -103,6 +116,11 @@ class ScheduleController extends Controller
 			$newName = $request->input('newName');
 			$newTime = $request->input('newTime');
 			$newTheaterNum = $request->input('newTheater');
+			
+			if($newName == '' && $newTime == '' && $newTheaterNum == '')
+			{
+				return response()->json(['status' => 404, 'message' => 'Updating fields were not filled'], 404);
+			}
 
 			if($newName != '')
 			{	
@@ -114,25 +132,31 @@ class ScheduleController extends Controller
 			}
 			if($newTheaterNum != '')
 			{	
+				$newNum = intval($newTheaterNum);
 				//try to get the theater model and then update the theater document to update the seats
-				$theater = Theater::where('num',intval($newTheaterNum))->first();
+				$theater = Theater::where('num',$newNum)->first();
 				if($theater)
 				{
-					$schedule->theater = ['num'=> intval($newTheaterNum), 'availableSeats'=> $theater->seats];
+
+					$schedule->theater = ['num'=>$newNum, 'availableSeats' => $theater->seats];
 				}
 				else
 				{
-					return response(view('error', ['text' => "Theater NOT found"]),404);
+					return response()->json(['status' => 404, 'message' => 'Theater NOT found'], 404);
 				}
 				
 			}
+			$foundSchedule = Schedule::where('name',$schedule->name)->where('time',$schedule->time)->where('theater.num', $schedule->theater['num'])->first();
+			if($foundSchedule)
+				return response()->json(['status' => 404, 'message' => 'Duplicate Schedule'], 404);
+
 			$schedule->save();
-			return $schedule;
+			return response()->json(['name' => $schedule->name, 'time' => $schedule->time, 'theater' => $schedule->theater['num']]);
 		}
 		else
 		{
 			//return view('error', ['text' => "Schedule NOT found"]);
-			return response(view('error', ['text' => "Schedule NOT found"]), 404);
+			return response()->json(['status' => 404, 'message' => 'Schedule NOT found'], 404);
 		}
 		
 	}
@@ -148,11 +172,11 @@ class ScheduleController extends Controller
 		else
 		{
 			//return view('error', ['text' => "Schedule NOT found"]);
-			return response(view('error', ['text' => "Schedule NOT found"]), 404);
+			return response()->json(['status' => 404, 'message' => 'Schedule NOT found'], 404);
 		}
 	}
 
-	public function buySeatsByBookingId($bookingId)
+	protected function buySeatsByBookingId($bookingId)
 	{
 		$bookingDoc = Schedule::where('bookid',$bookingId)->first();
 
@@ -162,14 +186,14 @@ class ScheduleController extends Controller
 			if (count($seatsArray) == 0)
 			{
 				//empty booking????
-				return response(view('error', ['text' => "something's wrong with booking system 1"]), 500);
+				return response()->json(['status' => 500, 'text' => 'Bad booking ID'], 500);
 			}
 
 			$schedule = Schedule::find($bookingDoc->scheduleid);
 			if (!$schedule)
 			{
 				//Booking ID is there.... but schedule has gone?
-				return response(view('error', ['text' => "something's wrong with booking system 2"]), 500);
+				return response()->json(['status' => 500, 'text' => 'Could not find schedule'], 500);
 			}
 
 			$theater = $schedule->theater;
@@ -213,7 +237,7 @@ class ScheduleController extends Controller
 		}
 		else
 		{
-			return response(view('error', ['text' => "Booking ID NOT found"]), 404);
+			return response()->json(['status' => 404, 'message' => 'Booking ID NOT found'], 404);
 		}
 		
 		//for debugging
@@ -226,12 +250,12 @@ class ScheduleController extends Controller
 			$bookingDoc->delete();
 		}
 
-		return $successList;
+		return ['name'=> $schedule->name, 'theater' => $theater['num'], 'time' => $schedule->time, 'seats' => $successList];
 	}
 
 	
 	//make the input string, separate them to be array of ["row"=>"seat"]
-	public function makeArrayOfSeatsFromText($seats)
+	protected function makeArrayOfSeatsFromText($seats)
 	{
 		$seatsInText = strtolower($seats);
 		$seatsTextInArray = explode(',', $seatsInText);
@@ -248,7 +272,7 @@ class ScheduleController extends Controller
 	}
 
 
-	public function reserveSeats(Request $request, $action='buying')
+	protected function reserveSeats(Request $request, $action='buying')
 	{
 		$name = $request->input('name');
 		$time = $request->input('time');
@@ -257,7 +281,7 @@ class ScheduleController extends Controller
 		//0. find if schedule is there, if not just return
 		$schedule = Schedule::where('name',$name)->where('time',$time)->where('theater.num', $theaterNum)->first();
 		if(!$schedule)
-			return response(view('error', ['text' => "Schedule NOT found"]), 404);
+			return response()->json(['status' => 404, 'message' => 'Schedule NOT found'], 404);
 
 		//1. get Seats input, make it to array of seats.
 		$seatsArray = ScheduleController::makeArrayOfSeatsFromText($request->input('seats'));
@@ -268,15 +292,23 @@ class ScheduleController extends Controller
 		}
 		else
 		{
-			return response(view('error', ['text' => "Invalid Seat to buy"]), 404);
+			return response()->json(['status' => 404, 'message' => 'Invalid Seat Input'], 404);
 		}
 
-		return $successList;
+		if(count($successList['seats']) != 0)
+		{
+			return response()->json($successList);	
+		}
+		else
+		{
+			return response()->json(['status' => 404, 'message' => 'Specified seats are not available'], 404);
+		}
+		
 
 	}
 
 	//Try multiple seats per booking transaction
-	public function occupySeats($schedule, $seatsArray, $action)
+	protected function occupySeats($schedule, $seatsArray, $action)
 	{	
 		$seatrows = array_keys($seatsArray);
 		//print_r($seatsArray);
@@ -305,7 +337,10 @@ class ScheduleController extends Controller
 					{
 						//remove each seat from the available list
 						unset($theater['availableSeats'][$seatRow][$index]);
-						$theater["reservedSeats"][$seatRow][] = $seatNum;
+						if($action =='booking')
+						{
+							$theater["reservedSeats"][$seatRow][] = $seatNum;	
+						}
 						$successList[$seatRow][] = $seatNum;
 					}
 				}
@@ -330,12 +365,10 @@ class ScheduleController extends Controller
 			// print_r($successList);
 			// print_r($bookingDoc);
 			// print_r($theater);
-			return [$successList, $action];
+			
 		}
-		else
-		{
-			return response(view('error', ['text' => "Seats are not available"]), 404);
-		}
+
+		return ['name' => $schedule->name, 'time' => $schedule->time, 'theater' => $theater['num'], 'seats' => $successList, 'bookingid' => $action];
 	}
 
 	public function reservation(Request $request)
@@ -399,16 +432,15 @@ class ScheduleController extends Controller
 			}
 			else
 			{
-				return response(view('error', ['text' => "No reserved seats for this schedule"]), 404);
+				return response()->json(['status' => 404, 'message' => 'No reserved seats to purge'], 404);
 			}
 		}
 		else
 		{
-			return response(view('error', ['text' => "Schedule NOT found"]), 404);
+			return response()->json(['status' => 404, 'message' => 'Schedule NOT found'], 404);
 		}
 
-		return $theater;
-		//return $theater;
+		return 0;
 	}
 
 	public function findSeatFromBookingId($bookingId)
@@ -416,15 +448,12 @@ class ScheduleController extends Controller
 		$reservedInfo = Schedule::where('bookid',$bookingId)->first();
 		if($reservedInfo)
 		{
-			$seatRow = array_keys($reservedInfo->seats)[0];
-			$seatNum = $reservedInfo->seats[$seatRow];
 			$schedule = Schedule::find($reservedInfo->scheduleid);
-			$movieName = $schedule->name;
-			return response()->json(['bookingID'=>$bookingId, 'name'=>$movieName, 'theater'=>$schedule->theater['num'],'seat'=>$seatRow.$seatNum]);
+			return response()->json(['bookingID' => $bookingId, 'name'=>$schedule->name, 'time'=> $schedule->time, 'theater'=>$schedule->theater['num'],'seat' => $reservedInfo->seats]);
 		}
 		else
 		{
-			return response(view('error', ['text' => "Invalid Booking ID"]), 404);
+			return response()->json(['status' => 404, 'message' => 'Invalid booking ID'], 404);
 		}
 	}
 }
