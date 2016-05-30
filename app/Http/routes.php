@@ -67,11 +67,15 @@ Route::get('schedule/movie/{name}/{date}/{time}/{theaterNum}', "ScheduleControll
 
 //these 2 route are only for booking counter/cashier to use.
 Route::get('counter/reservation/info', "ScheduleController@findAllbookingInfo");
+//this can be used for both bookingID and purchaseID
 Route::get('counter/reservation/info/{bookingId}', "ScheduleController@findSeatFromBookingId");
-
 //This function do both Buying and Booking, I use POST on this as it normally post a new transaction.
-//A duplicated route for other user, i.e. online booking/mobile app
-Route::post('reservation/reserveSeats', "ScheduleController@reservation");
-Route::delete('reservation/delete', "ScheduleController@cancelBooking");
+Route::post('counter/reservation/reserveSeats', "ScheduleController@reservation");
+Route::post('counter/reservation/claimTicket', "ScheduleController@claimTicket");
+
+//A route for other client to do reservation, i.e. online booking/mobile app
+Route::post('remote/reservation/reserveSeats', "ScheduleController@remoteReservation");
+Route::delete('remote/reservation/delete', "ScheduleController@cancelBooking");
+
 //this will most likely be used by an automate system that run at 45 min before schedule
 Route::delete('reservation/delete/theater', "ScheduleController@purgeReservedSeats");		

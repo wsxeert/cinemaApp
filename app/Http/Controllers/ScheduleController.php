@@ -340,12 +340,6 @@ class ScheduleController extends Controller
 		$theater = $schedule->theater;
 		$successList = array();
 		
-		if($action == 'booking')
-		{
-			$bookingDoc = new Schedule;
-			$bookingDoc->scheduleid = $schedule->_id;
-		}
-
 		//loop through all seats
 		foreach ($seatrows as $seatRow)
 		{
@@ -372,30 +366,20 @@ class ScheduleController extends Controller
 		}
 		if (count($successList) != 0)
 		{
-			if($action == 'booking')
-			{
-				$bookingDoc->seats = $successList;
-				//carry out the bookingID
-				$action = bin2hex(random_bytes(6));
-				$bookingDoc->bookid = $action;
-				$bookingDoc->save();
-			}
-		
 			//push to database
 			$schedule->theater = $theater;
 			$schedule->save();
-
-			//for debugging
-			// print_r($successList);
-			// print_r($bookingDoc);
-			// print_r($theater);
-			
 		}
 
-		return ['name' => $schedule->name, 'date' => $schedule->date, 'time' => $schedule->time, 'theater' => $theater['num'], 'seats' => $successList, 'bookingid' => $action];
+		//for debugging
+		// print_r($successList);
+		// print_r($bookingDoc);
+		// print_r($theater);
+
+		return $successList;
 	}
 
-	protected function reserveSeats(Request $request, $action='buying')
+	protected function reserveSeats(Request $request, $remote='no', $action='buying')
 	{
 		$name = $request->input('name');
 		$date = $request->input('date');
@@ -419,9 +403,39 @@ class ScheduleController extends Controller
 			return response()->json(['status' => 404, 'message' => 'Invalid Seat Input'], 404);
 		}
 
-		if(count($successList['seats']) != 0)
+		if(count($successList) != 0)
 		{
-			return response()->json($successList);	
+			if($remote == 'yes')
+			{
+				//Generate bookingID/purchaseID
+				if($action == 'buying')
+				{
+					//we store more info here, so that we dont need to find fo the schedule when the customer claim the ticket
+					//we keep scheduleId just for querying.
+					$purchaseInfo = new Schedule;
+					$purchaseInfo->scheduleid = $schedule->_id;
+					$purchaseInfo->name = $schedule->name;
+					$purchaseInfo->time = $schedule->time;
+					$purchaseInfo->date = $schedule->date;
+					$purchaseInfo->theater = $schedule->theater['num'];
+					$purchaseInfo->seats = $successList;
+					$action = bin2hex(random_bytes(6));
+					$purchaseInfo->purchaseid = $action;
+					$purchaseInfo->save();
+				}
+				elseif($action == 'booking')
+				{
+					$bookingDoc = new Schedule;
+					$bookingDoc->scheduleid = $schedule->_id;
+					$bookingDoc->seats = $successList;
+					//reuse $action to carry out bookingid
+					$action = bin2hex(random_bytes(6));
+					$bookingDoc->bookid = $action;
+					$bookingDoc->save();
+				}
+			}
+
+			return ['name'=>$schedule->name, 'date'=>$schedule->date, 'time'=>$schedule->time, 'thearter'=>$schedule->theater['num'], 'seats'=>$successList,'bookingid'=>$action];
 		}
 		else
 		{
@@ -433,26 +447,56 @@ class ScheduleController extends Controller
 	//it accept bookingID which could be used at booking counter
 	public function reservation(Request $request)
 	{
-		$action = strtolower($request->input('action'));
+		$bookingId = $request->input('bookingid');
 		
-		if($action == 'buy')
+		if($bookingId != '')
 		{
-			$bookingId = $request->input('bookingid');
-			if($bookingId != '')
-			{
-				return ScheduleController::buySeatsByBookingId($bookingId);
-			}
-			else
-			{
-				return ScheduleController::reserveSeats($request);
-			}
+			return ScheduleController::buySeatsByBookingId($bookingId);
 		}
-		elseif ($action == 'book')
+		else
 		{
-			return ScheduleController::reserveSeats($request, 'booking');
+			return ScheduleController::reserveSeats($request);
 		}
 	}
 
+	public function remoteReservation(Request $request)
+	{
+		$action = strtolower($request->input('action'));
+
+		if($action == 'buy')
+		{
+			return ScheduleController::reserveSeats($request, 'yes', 'buying');
+		}
+		elseif ($action == 'book')
+		{
+			return ScheduleController::reserveSeats($request, 'yes', 'booking');
+		}
+		else
+		{
+			return response()->json(['status' => 404, 'message' => 'Invalid reservation method'], 404);
+		}
+	}
+
+	public function claimTicket(Request $request)
+	{
+		$purchaseId = $request->input('purchaseid');
+		$purchaseInfo = Schedule::where('purchaseid', $purchaseId)->first();
+		if($purchaseInfo)
+		{
+			$ticketInfo['name'] = $purchaseInfo->name;
+			$ticketInfo['date'] = $purchaseInfo->date;
+			$ticketInfo['time'] = $purchaseInfo->time;
+			$ticketInfo['seats'] = $purchaseInfo->seats;
+			$ticketInfo['theater'] = $purchaseInfo->theater;
+			//we're done with this, clear it.
+			$purchaseInfo->delete();
+			return $ticketInfo;
+		}
+		else
+		{
+			return response()->json(['status' => 404, 'message' => 'Invalid purchase ID'], 404);
+		}
+	}
 
 	public function cancelBooking(Request $request)
 	{
@@ -551,7 +595,7 @@ class ScheduleController extends Controller
 			//remove all booking document for this schedule/theater
 			//put it here just in case that the reservedSeats mismatch with booking document. (no reserved seats in theater's document for some reason)
 			//just delete them all
-			DB::collection('schedules')->where('scheduleid', $schedule->_id)->delete();
+			DB::collection('schedules')->where('scheduleid', $schedule->_id)->where('bookid','exists',true)->delete();
 
 			if(isset($theater["reservedSeats"]))
 			{
@@ -577,13 +621,16 @@ class ScheduleController extends Controller
 		return 'SUCCESS';
 	}
 
+	//we can input both bookingID or purchaseID here.
 	public function findSeatFromBookingId($bookingId)
 	{
-		$reservedInfo = Schedule::where('bookid',$bookingId)->first();
+		$reservedInfo = Schedule::where('bookid',$bookingId)->orWhere('purchaseid',$bookingId)->first();
+
 		if($reservedInfo)
 		{
-			$schedule = Schedule::find($reservedInfo->scheduleid);
-			return response()->json(['bookingID' => $bookingId, 'name'=>$schedule->name, 'date'=>$schedule->date, 'time'=> $schedule->time, 'theater'=>$schedule->theater['num'],'seat' => $reservedInfo->seats]);
+			$id = $reservedInfo->scheduleid;
+			$schedule = Schedule::find($id);
+			return response()->json(['ID' => $bookingId, 'name'=>$schedule->name, 'date'=>$schedule->date, 'time'=> $schedule->time, 'theater'=>$schedule->theater['num'],'seat' => $reservedInfo->seats]);
 		}
 		else
 		{
