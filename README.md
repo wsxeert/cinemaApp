@@ -125,3 +125,11 @@ note: /counter is for booking counter system
 ### /remote/reservation
 * __POST /remote/reservation/reserveSeats__  To buy or book the seats, bookingId or purchasingId will be returned. Input: __name__ AND __date__ AND __time__ AND __theaterNum__ AND __seats__ AND __action__ ('buy' or 'book') 
 * __DELETE /remote/reservation/delete__ To cancel the booking. Input: __bookid__
+ 
+
+## Concern
+This application definitely needs authentication infrastructure, otherwise anyone can do anything to the system. For scalability, this application a little hard to expand as the design of Theater, there has to be branching information for it.
+
+
+### Personal note
+After playing with Laravel for a while, I get to know that it is a really powerful framework and easy to use. Thank you
