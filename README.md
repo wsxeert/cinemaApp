@@ -107,10 +107,10 @@ note: APIs mentioned above are ment to be used by schedule planner.
 
 ### /schedule
 * __GET /schedule/all__  To query all schedule.
-* __GET /schedule/move/{name}__ To query schedule by movie name.
-* __GET /schedule/move/{name}/{date}__ To query schedules for a specific date.
-* __GET /schedule/move/{name}/{date}/{time}__ To query for theaters that have the specified schedule (more than one theater can have same show time)
-* __GET /schedule/move/{name}/{date}/{time}/{theaterNum}__ To check available seats for the specified schedule/theater.
+* __GET /schedule/movie/{name}__ To query schedule by movie name.
+* __GET /schedule/movie/{name}/{date}__ To query schedules for a specific date.
+* __GET /schedule/movie/{name}/{date}/{time}__ To query for theaters that have the specified schedule (more than one theater can have same show time)
+* __GET /schedule/movie/{name}/{date}/{time}/{theaterNum}__ To check available seats for the specified schedule/theater.
 
 note: /schedule is ment for booking counter and other client (mobile, website)
 
