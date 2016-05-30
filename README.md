@@ -59,13 +59,15 @@ __MovieController__ responsible for CRUD operation of the Movie model to databas
             
 __TheaterController__ responsible for CRUD operation of the Theater model to database.
 
-__ScheduleController__ responsible for CRUD operation of the Schedule model to database (this part user will be the schedule planner), shedule queries, seat reservation (book/buy). There will always cross-check with both Movie and Theater if infomation are valid during the operation. (example: we cant create schedule that movie name is not in the database, when create schedule that theater name not in the database.) 
+__ScheduleController__ responsible for CRUD operation of the Schedule model to database (this part user will be the schedule planner), schedule queries, seat reservation (book/buy). There will always cross-check with both Movie and Theater if infomation are valid during the operation. (example: we cant create schedule that movie name is not in the database, when create schedule that theater name not in the database.) 
 
 
 
 ## View
 I only made some pages for testing the APIs, not much here.
+
 planning.php (/planning), to test APIs to MovieController, TheaterController, ScheduleController on Create/Update/Delete part.
+
 ticketing.php (/counter), to test APIs on booking/buying seats, cancel booking, etc.
 
 
@@ -82,10 +84,21 @@ APIs created in this application are simulated from how we do business on cinema
 Most of the API will return result in JSON, except for some delete method will return 'SUCCESS'.
 On error, returns status (HTTP status) and some message.
 
-1. /planning/movie
-
-   GET /planning/movie 
-   POST /planning/movie/create                                   To create new movie
+### /planning/movie
+   * __GET /planning/movie__          To get all movies information.
+   * __GET /planning/movie/{name}__  To get specific movie information by name.
+   * __POST /planning/movie/create__ To create new movie. Input: __name__ AND __duration__
+   * __PUT /planning/movie/update__ To update movie information. Input: __name__, __newName__ OR __newDuration__ 
+   * __DELETE /planning/movie/delete__ To delete a specific movie by name. Input: __name__
    
-2. /planning/theater
-3. /planning/schedule
+### /planning/theater
+* __GET /planning/theater__ To get all theater information.
+* __GET /planning/theater/{theaterNum}__ To get a theater information by theater number.
+* __POST /planning/theater/create__ To create a new theater. Input: __num__ AND __rows__ AND __seats__
+* __DELETE /planning/theater/delete__ To delete existing theater. Input: __num__
+
+### /planning/schedule
+* __GET /planning/schedule__ To get all schedule information.
+* __POST /planning/schedule/create__ To create new schedule. Input: __name__ AND __time__ AND __date__ AND __theater__ (only existing theater number)
+* __PUT /planning/schedule/update__ To update an existing schedule. Input: __name__ AND __time__ AND __date__ AND __theater__ with __newName__ OR __newDate__ OR __newTime__ OR __newTheater__
+* __DELETE /planning/schedule/delete__ To delete an existing schedule. Input: __name__ AND __time__ AND __date__ AND __theater__
