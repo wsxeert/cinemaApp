@@ -13,6 +13,8 @@ Framework
 * Laravel 5.2.33
 * Jenseggers Laravel MongoDB (for some libraries to connect Laravel with MongoDB)
 
+Please note that, some file were not uploaded to this repository due to default ignore list from Laravel.
+
 ## Models
 Since we come to the cinema for watching movies, let me starts from the movie.
 
