@@ -102,3 +102,26 @@ On error, returns status (HTTP status) and some message.
 * __POST /planning/schedule/create__ To create new schedule. Input: __name__ AND __time__ AND __date__ AND __theater__ (only existing theater number)
 * __PUT /planning/schedule/update__ To update an existing schedule. Input: __name__ AND __time__ AND __date__ AND __theater__ with __newName__ OR __newDate__ OR __newTime__ OR __newTheater__
 * __DELETE /planning/schedule/delete__ To delete an existing schedule. Input: __name__ AND __time__ AND __date__ AND __theater__
+
+note: APIs mentioned above are ment to be used by schedule planner.
+
+### /schedule
+* __GET /schedule/all__  To query all schedule.
+* __GET /schedule/move/{name}__ To query schedule by movie name.
+* __GET /schedule/move/{name}/{date}__ To query schedules for a specific date.
+* __GET /schedule/move/{name}/{date}/{time}__ To query for theaters that have the specified schedule (more than one theater can have same show time)
+* __GET /schedule/move/{name}/{date}/{time}/{theaterNum}__ To check available seats for the specified schedule/theater.
+
+note: /schedule is ment for booking counter and other client (mobile, website)
+
+### /counter/reservation
+* __GET /counter/reservation/info__ To query all booking information (no purchase information included)
+* __GET /counter/reservation/info/{bookingId}__ To query seats information from booking ID or purchasing ID
+* __POST /counter/reservation/reservSeats__ To buy a seat. Input: __bookingid__ OR (__name__ AND __date__ AND __time__ AND __theaterNum__ and __seats__ (input multiple seats by a string of seat number separate by comma(,))
+* __POST /counter/reservation/claimTicket__ To clear purchase info as the booking counter print a ticket for the customer. Input: __purchaseid__
+
+note: /counter is for booking counter system
+
+### /remote/reservation
+* __POST /remote/reservation/reserveSeats__  To buy or book the seats, bookingId or purchasingId will be returned. Input: __name__ AND __date__ AND __time__ AND __theaterNum__ AND __seats__ AND __action__ ('buy' or 'book') 
+* __DELETE /remote/reservation/delete__ To cancel the booking. Input: __bookid__
