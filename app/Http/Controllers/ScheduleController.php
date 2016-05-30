@@ -11,28 +11,51 @@ use DB;
 
 class ScheduleController extends Controller
 {
+	//HACK function
+	//public function showMeAll()
+	//{
+	//	$schedule = Schedule::all();
+	//	return $schedule;
+	//}
 
     public function all()
     {
     	
     	$schedules = Schedule::where('bookid', 'exists', false)->get();
+    	
     	foreach($schedules as $schedule)
     	{
     		$theater = $schedule->theater;
-    		$returnList[] = ['name' => $schedule->name, 'time' => $schedule->time, 'theater' => $theater['num']];
+    		$returnList[] = ['name' => $schedule->name, 'date' => $schedule->date, 'time' => $schedule->time, 'theater' => $theater['num']];
     	}
 
     	return $returnList;
     }
 
 
-    public function getScheduleByMovieName($name)
+    public function getScheduleByMovieNameAndDate($name, $date='')
     {
-    	$schedules = Schedule::where('name', $name)->get();
-    	foreach($schedules as $schedule)
+    	if($date == '')
     	{
-    		$returnList[] = ['name'=> $schedule->name, 'time' => $schedule->time, 'theater' => $schedule->theater['num']];
+    		$schedules = Schedule::where('name', $name)->get();
     	}
+    	else
+    	{
+    		$schedules = Schedule::where('name', $name)->where('date',$date)->get();
+    	}
+
+    	if(count($schedules) != 0)
+    	{
+    		foreach($schedules as $schedule)
+	    	{
+	    		$returnList[] = ['name'=> $schedule->name, 'date' => $schedule->date, 'time' => $schedule->time, 'theater' => $schedule->theater['num']];
+	    	}	
+    	}
+    	else
+    	{
+    		return response()->json(['status' => 404,'message' => 'Schedule not found'], 404);
+    	}
+    	
     	return $returnList;
     }
 
@@ -41,8 +64,9 @@ class ScheduleController extends Controller
 	{
 		$movieName = $request->input('name');
 		$time = $request->input('time');
+		$date = $request->input('date');
 		$theaterNum = $request->input('theater');
-		$scheduleFound = Schedule::where('name',$movieName)->where('time',$time)->where('theater.num',intval($theaterNum))->first();
+		$scheduleFound = Schedule::where('name',$movieName)->where('date',$date)->where('time',$time)->where('theater.num',intval($theaterNum))->first();
 		
 		//if this new schedule is a duplicated one, then dont create more.
 		if($scheduleFound)
@@ -59,11 +83,12 @@ class ScheduleController extends Controller
 			if(!$theater)
 				return response()->json(['status' => 404,'message' => 'Invalid theater'], 404);
 
-			if( $time != '' )
+			if( ($time  != '') && ($date != ''))
 			{
 				$newSchedule = new Schedule;
 				$newSchedule->name = $movieName;
 				$newSchedule->time = $time;
+				$newSchedule->date = $date;
 				$newSchedule->theater = ['num'=>intval($theaterNum), 'availableSeats' => $theater->seats];
 				$newSchedule->save();
 			}
@@ -74,12 +99,12 @@ class ScheduleController extends Controller
 		}
 		else
 		{
-			return response()->json(['status' => 404, 'message' => 'Movie NOT found!'], 404);
+			return response()->json(['status' => 404, 'message' => 'Movie not found!'], 404);
 		}
-		return response()->json(['name'=>$newSchedule->name, 'time' => $newSchedule->time, 'theater' => $newSchedule->theater['num']]);
+		return response()->json(['name'=>$newSchedule->name, 'date' => $newSchedule->date, 'time' => $newSchedule->time, 'theater' => $newSchedule->theater['num']]);
 	}    
 
-	//return 0 on succeed.
+	
 	public function deleteSchedule(Request $request)
 	{
 		$id = $request->input('_id');
@@ -90,9 +115,10 @@ class ScheduleController extends Controller
 		else
 		{
 			$name = $request->input('name');
+			$date = $request->input('date');
 			$time = $request->input('time');
 			$theaterNum = $request->input('theater');
-			$schedule = Schedule::where('name', $name)->where('time',$time)->where('theater.num',intval($theaterNum))->first();
+			$schedule = Schedule::where('name', $name)->where('date', $date)->where('time',$time)->where('theater.num',intval($theaterNum))->first();
 		}
 
 		if($schedule)
@@ -101,23 +127,24 @@ class ScheduleController extends Controller
 		}
 		else
 		{
-			return response()->json(['status' => 404, 'message' => 'Schedule NOT found'], 404);
+			return response()->json(['status' => 404, 'message' => 'Schedule not found'], 404);
 		}
-
+		return 'SUCCESS';
 	}
 
 	//Return the new schedule if the update has been done successfully
 	//otherwise, return null.
-	public function update(Request $request)
+	public function updateSchedule(Request $request)
 	{
-		$schedule = Schedule::where('name',$request->input('name'))->where('time',$request->input('time'))->where('theater.num',intval($request->input('theater')))->first();
+		$schedule = Schedule::where('name',$request->input('name'))->where('date', $request->input('date'))->where('time',$request->input('time'))->where('theater.num',intval($request->input('theater')))->first();
 		if($schedule)
 		{
 			$newName = $request->input('newName');
-			$newTime = $request->input('newTime');
+			$newDate = $request->input('newDate');
+ 			$newTime = $request->input('newTime');
 			$newTheaterNum = $request->input('newTheater');
 			
-			if($newName == '' && $newTime == '' && $newTheaterNum == '')
+			if(($newName == '') && ($newDate == '') && ($newTime == '') && ($newTheaterNum == ''))
 			{
 				return response()->json(['status' => 404, 'message' => 'Updating fields were not filled'], 404);
 			}
@@ -125,6 +152,10 @@ class ScheduleController extends Controller
 			if($newName != '')
 			{	
 				$schedule->name = $newName;
+			}
+			if($newDate != '')
+			{	
+				$schedule->date = $newDate;
 			}
 			if($newTime != '')
 			{	
@@ -142,38 +173,66 @@ class ScheduleController extends Controller
 				}
 				else
 				{
-					return response()->json(['status' => 404, 'message' => 'Theater NOT found'], 404);
+					return response()->json(['status' => 404, 'message' => 'Theater not found'], 404);
 				}
 				
 			}
-			$foundSchedule = Schedule::where('name',$schedule->name)->where('time',$schedule->time)->where('theater.num', $schedule->theater['num'])->first();
+			$foundSchedule = Schedule::where('name',$schedule->name)->where('date',$schedule->date)->where('time',$schedule->time)->where('theater.num', $schedule->theater['num'])->first();
 			if($foundSchedule)
+			{
 				return response()->json(['status' => 404, 'message' => 'Duplicate Schedule'], 404);
+			}
 
+			//no problem, then save;
 			$schedule->save();
-			return response()->json(['name' => $schedule->name, 'time' => $schedule->time, 'theater' => $schedule->theater['num']]);
+			return response()->json(['name' => $schedule->name, 'date' => $schedule->date, 'time' => $schedule->time, 'theater' => $schedule->theater['num']]);
 		}
 		else
 		{
-			//return view('error', ['text' => "Schedule NOT found"]);
-			return response()->json(['status' => 404, 'message' => 'Schedule NOT found'], 404);
+			//return view('error', ['text' => "Schedule not found"]);
+			return response()->json(['status' => 404, 'message' => 'Schedule not found'], 404);
 		}
 		
 	}
 
-	//Return array of available seats if the schedule found
-	public function getAvailableSeats($name, $time, $theaterNum)
+	public function getTheater($name, $date, $time)
 	{
-		$schedule = Schedule::where('name',$name)->where('time',$time)->where('theater.num',intval($theaterNum))->first();
-		if($schedule)
+		$schedules = Schedule::where('name',$name)->where('date',$date)->where('time',$time)->get();
+		$returnList = array();
+		if(count($schedules) != 0)
 		{
-			return $schedule->theater['availableSeats'];	
+			foreach ($schedules as $schedule)
+			{
+				$returnList[] = $schedule->theater['num'];
+			}	
 		}
 		else
 		{
-			//return view('error', ['text' => "Schedule NOT found"]);
-			return response()->json(['status' => 404, 'message' => 'Schedule NOT found'], 404);
+			return response()->json(['status' => 404, 'message' => 'Schedule not found'], 404);
 		}
+
+		return $returnList;
+	}
+
+	//Return array of available seats if the schedule found
+	public function getAvailableSeats($name, $date, $time, $theaterNum='')
+	{	
+		$returnList = array();
+
+		$schedule = Schedule::where('name',$name)->where('date',$date)->where('time',$time)->where('theater.num',intval($theaterNum))->first();
+		
+		if($schedule)
+		{
+			$returnList = $schedule->theater['availableSeats'];	
+		}
+		else
+		{
+			//return view('error', ['text' => "Schedule not found"]);
+			return response()->json(['status' => 404, 'message' => 'Schedule not found'], 404);
+		}
+		
+		return $returnList;
+		
 	}
 
 	protected function buySeatsByBookingId($bookingId)
@@ -237,7 +296,7 @@ class ScheduleController extends Controller
 		}
 		else
 		{
-			return response()->json(['status' => 404, 'message' => 'Booking ID NOT found'], 404);
+			return response()->json(['status' => 404, 'message' => 'Booking ID not found'], 404);
 		}
 		
 		//for debugging
@@ -250,7 +309,7 @@ class ScheduleController extends Controller
 			$bookingDoc->delete();
 		}
 
-		return ['name'=> $schedule->name, 'theater' => $theater['num'], 'time' => $schedule->time, 'seats' => $successList];
+		return ['name'=> $schedule->name, 'date' => $schedule->date, 'time' => $schedule->time, 'theater' => $theater['num'], 'seats' => $successList];
 	}
 
 	
@@ -271,41 +330,6 @@ class ScheduleController extends Controller
 		return $seatsArray;
 	}
 
-
-	protected function reserveSeats(Request $request, $action='buying')
-	{
-		$name = $request->input('name');
-		$time = $request->input('time');
-		$theaterNum = intval($request->input('theaterNum'));
-		
-		//0. find if schedule is there, if not just return
-		$schedule = Schedule::where('name',$name)->where('time',$time)->where('theater.num', $theaterNum)->first();
-		if(!$schedule)
-			return response()->json(['status' => 404, 'message' => 'Schedule NOT found'], 404);
-
-		//1. get Seats input, make it to array of seats.
-		$seatsArray = ScheduleController::makeArrayOfSeatsFromText($request->input('seats'));
-
-		if(count($seatsArray) != 0)
-		{
-			$successList = ScheduleController::occupySeats($schedule, $seatsArray, $action);
-		}
-		else
-		{
-			return response()->json(['status' => 404, 'message' => 'Invalid Seat Input'], 404);
-		}
-
-		if(count($successList['seats']) != 0)
-		{
-			return response()->json($successList);	
-		}
-		else
-		{
-			return response()->json(['status' => 404, 'message' => 'Specified seats are not available'], 404);
-		}
-		
-
-	}
 
 	//Try multiple seats per booking transaction
 	protected function occupySeats($schedule, $seatsArray, $action)
@@ -368,9 +392,45 @@ class ScheduleController extends Controller
 			
 		}
 
-		return ['name' => $schedule->name, 'time' => $schedule->time, 'theater' => $theater['num'], 'seats' => $successList, 'bookingid' => $action];
+		return ['name' => $schedule->name, 'date' => $schedule->date, 'time' => $schedule->time, 'theater' => $theater['num'], 'seats' => $successList, 'bookingid' => $action];
 	}
 
+	protected function reserveSeats(Request $request, $action='buying')
+	{
+		$name = $request->input('name');
+		$date = $request->input('date');
+		$time = $request->input('time');
+		$theaterNum = intval($request->input('theaterNum'));
+		
+		//0. find if schedule is there, if not just return
+		$schedule = Schedule::where('name',$name)->where('date',$date)->where('time',$time)->where('theater.num', $theaterNum)->first();
+		if(!$schedule)
+			return response()->json(['status' => 404, 'message' => 'Schedule not found'], 404);
+
+		//1. get Seats input, make it to array of seats.
+		$seatsArray = ScheduleController::makeArrayOfSeatsFromText($request->input('seats'));
+
+		if(count($seatsArray) != 0)
+		{
+			$successList = ScheduleController::occupySeats($schedule, $seatsArray, $action);
+		}
+		else
+		{
+			return response()->json(['status' => 404, 'message' => 'Invalid Seat Input'], 404);
+		}
+
+		if(count($successList['seats']) != 0)
+		{
+			return response()->json($successList);	
+		}
+		else
+		{
+			return response()->json(['status' => 404, 'message' => 'Specified seats are not available'], 404);
+		}
+	}
+
+	//Main function to do booking buy the seats
+	//it accept bookingID which could be used at booking counter
 	public function reservation(Request $request)
 	{
 		$action = strtolower($request->input('action'));
@@ -394,6 +454,78 @@ class ScheduleController extends Controller
 	}
 
 
+	public function cancelBooking(Request $request)
+	{
+		$bookingId = $request->input('bookid');
+		$reservedInfo = Schedule::where('bookid', $bookingId)->first();
+		if($reservedInfo)
+		{
+			$schedule = Schedule::find($reservedInfo->scheduleid);
+			if($schedule)
+			{
+				$theater = $schedule->theater;
+
+				$bookedSeats = $reservedInfo->seats;
+				$bookedRows = array_keys($bookedSeats);
+				foreach($bookedRows as $row)
+				{
+					if(isset($theater['reservedSeats'][$row]) && isset($theater['availableSeats'][$row]))
+					{
+						$seats = $bookedSeats[$row];
+						foreach($seats as $seat)
+						{
+							$index = array_search($seat, $theater['reservedSeats'][$row]);
+							if($index !== false)
+							{
+								unset($theater['reservedSeats'][$row][$index]);
+								$theater['availableSeats'][$row][] = $seat;
+								//for debugging
+								//$successList[$row][] = $seat;
+							}
+							else
+							{
+								//again, for some reason the seat disappeared from the reserved list of the theater document.
+							}
+						}
+						if(count($theater['reservedSeats'][$row]) == 0)
+						{
+							//clear it just for cleaness
+							unset($theater['reservedSeats'][$row]);
+						}
+					}
+					else
+					{
+						// the booked seats have gone for some reason??
+						// this theater somehow does not have that row?? (someone just changed it??)
+						// we dont care about it for now.
+					}
+
+				}
+
+				if(count($theater['reservedSeats']) == 0)
+				{
+					//clear it just for cleaness
+					unset($theater['reservedSeats']);
+				}
+
+				$schedule->theater = $theater;
+				$schedule->save();
+				$reservedInfo->delete();
+
+			}
+			else
+			{
+				return response()->json(['status' => 404, 'message' => 'Schedule not found, probably schedule time has passed'], 404);
+			}
+
+			return 'SUCCESS';
+		}
+		else
+		{
+			return response()->json(['status' => 404, 'message' => 'Invalid booking ID'], 404);
+		}
+	}
+
 	public function purgeReservedSeats(Request $request)
 	{
 		//if ID is supplied, then it will ignore the rest info
@@ -403,11 +535,13 @@ class ScheduleController extends Controller
 		{
 			$schedule = Schedule::find($id);
 		}
-		else{
+		else
+		{
 			$name = $request->input('name');
+			$date = $request->input('date');
 			$time = $request->input('time');
 			$theaterNum = $request->input('theaterNum');
-			$schedule = Schedule::where('name',$name)->where('time',$time)->where('theater.num',intval($theaterNum))->first();
+			$schedule = Schedule::where('name',$name)->where('date',$date)->where('time',$time)->where('theater.num',intval($theaterNum))->first();
 		}
 
 		if($schedule)
@@ -437,10 +571,10 @@ class ScheduleController extends Controller
 		}
 		else
 		{
-			return response()->json(['status' => 404, 'message' => 'Schedule NOT found'], 404);
+			return response()->json(['status' => 404, 'message' => 'Schedule not found'], 404);
 		}
 
-		return 0;
+		return 'SUCCESS';
 	}
 
 	public function findSeatFromBookingId($bookingId)
@@ -449,12 +583,25 @@ class ScheduleController extends Controller
 		if($reservedInfo)
 		{
 			$schedule = Schedule::find($reservedInfo->scheduleid);
-			return response()->json(['bookingID' => $bookingId, 'name'=>$schedule->name, 'time'=> $schedule->time, 'theater'=>$schedule->theater['num'],'seat' => $reservedInfo->seats]);
+			return response()->json(['bookingID' => $bookingId, 'name'=>$schedule->name, 'date'=>$schedule->date, 'time'=> $schedule->time, 'theater'=>$schedule->theater['num'],'seat' => $reservedInfo->seats]);
 		}
 		else
 		{
 			return response()->json(['status' => 404, 'message' => 'Invalid booking ID'], 404);
 		}
+	}
+
+	public function findAllBookingInfo()
+	{
+		$bookingDocs = Schedule::where('bookid', 'exists', true)->get();
+		$returnList = array();
+		foreach($bookingDocs as $bookingDoc)
+		{
+			$schedule = Schedule::find($bookingDoc->scheduleid);
+			$returnList[] = ['bookingid' => $bookingDoc->bookid, 'name' => $schedule->name, 'date' => $schedule->date, 'time' => $schedule->time, 'theater' => $schedule->theater['num'], 'seats' => $bookingDoc->seats];
+		}
+
+		return $returnList;
 	}
 }
 

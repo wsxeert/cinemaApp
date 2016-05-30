@@ -9,7 +9,7 @@ use DB;
 
 class MovieController extends Controller
 {
-    //if name is supplied, get the movie information for the specified movie if found one.
+    //if 'name' is supplied, get the movie information for the specified movie if found one.
     //otherwise return every movies we have.
     //return type will always be an array even we didnt find any
     public function get()
@@ -39,17 +39,18 @@ class MovieController extends Controller
        	}
        	else
        	{
-       		return response()->json(['status' => 404, 'message' => 'No movie found'], 404);
+       		return response()->json(['status' => 404, 'message' => 'Movie not found'], 404);
        	}
     	
     	return response()->json($returnList);
     }
 
     //create new movie with information of 'name' and 'duration'
-    public function create(Request $request)
+    public function createMovie(Request $request)
     {
     	$name = $request->input('name');
-    	if($name != '')
+    	$duration = $request->input('duration');
+    	if($name != '' && $duration != '')
     	{
     		$movie = Movie::where('name', $name)->first();
     		if($movie)
@@ -59,11 +60,10 @@ class MovieController extends Controller
     	}
     	else
     	{
-    		return response()->json(['status' => 404, 'message' => 'Please specify movie name'], 404);
+    		return response()->json(['status' => 404, 'message' => 'Not enough input information'], 404);
     	}
    	
-	   	$duration = $request->input('duration');
-    	$newMovie = new Movie;
+	   	$newMovie = new Movie;
     	$newMovie->name = $name;
     	$newMovie->duration = $duration;
     	$newMovie->save();
@@ -76,7 +76,7 @@ class MovieController extends Controller
 
     //update information to the specified movie document.
     //movie name is required, other field can left blank if not change.
-    public function update(Request $request)
+    public function updateMovie(Request $request)
     {
     	$name = $request->input('name');
     	$newName = $request->input('newName');
